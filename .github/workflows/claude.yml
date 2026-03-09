@@ -13,10 +13,15 @@ jobs:
   claude-review:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code              # ← add this
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0                 # full history so git diff works
+
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}        # ← add this
+          github_token: ${{ secrets.GITHUB_TOKEN }}
           prompt: |
             You are a senior code reviewer for LTS Datapoint, a Symfony 6.4 multi-tenant SaaS application.
             Review PR #${{ github.event.pull_request.number }} and post a structured review comment with these sections:
