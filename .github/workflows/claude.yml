@@ -1,58 +1,37 @@
-name: Claude Code
+name: Claude PR Review
 
 on:
-  issue_comment:
-    types: [created]
-  pull_request_review_comment:
-    types: [created]
-  issues:
-    types: [opened, assigned]
-  pull_request_review:
-    types: [submitted]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
 
 jobs:
-  claude:
-    if: |
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review_comment' && contains(github.event.comment.body, '@claude')) ||
-      (github.event_name == 'pull_request_review' && contains(github.event.review.body, '@claude')) ||
-      (github.event_name == 'issues' && (contains(github.event.issue.body, '@claude') || contains(github.event.issue.title, '@claude')))
+  claude-review:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-      issues: write
-      id-token: write
-      actions: read # Required for Claude to read CI results on PRs
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-        with:
-          fetch-depth: 1
-
-      - name: Run Claude Code
-        id: claude
-        uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
-
-          # Optional: Customize the trigger phrase (default: @claude)
-          # trigger_phrase: "/claude"
-
-          # Optional: Trigger when specific user is assigned to an issue
-          # assignee_trigger: "claude-bot"
-
-          # Optional: Configure Claude's behavior with CLI arguments
-          # claude_args: |
-          #   --model claude-opus-4-1-20250805
-          #   --max-turns 10
-          #   --allowedTools "Bash(npm install),Bash(npm run build),Bash(npm run test:*),Bash(npm run lint:*)"
-          #   --system-prompt "Follow our coding standards. Ensure all new code has tests. Use TypeScript for new files."   
-          
-          # Optional: Advanced settings configuration
-          # settings: |
-          #   {
-          #     "env": {
-          #       "NODE_ENV": "test"
-          #     }
-          #   }
+          github_token: ${{ secrets.GITHUB_TOKEN }}        # ← add this
+          prompt: |
+            You are a senior code reviewer for LTS Datapoint, a Symfony 6.4 multi-tenant SaaS application.
+            Review PR #${{ github.event.pull_request.number }} and post a structured review comment with these sections:
+            ## Critical Issues (must fix before merge)
+            ## Warnings (should fix)
+            ## Info (suggestions)
+            Check specifically for:
+            - No business logic in controllers (use Handlers)
+            - All DB access via Repositories only, never EntityManager directly
+            - All queries MUST use TenantContext (flag missing tenant filter as Critical)
+            - Entity naming must use Dp* prefix, no constructors, no ArrayCollection
+            - No debug code: dd(), dump(), var_dump(), console.log(), {{ dump() }}
+            - Security: SQL injection, XSS, CSRF token in forms
+            - N+1 query risks
+            - PSR-1 and PSR-12 coding standards
+          claude_args: |
+            --max-turns 10
+            --model claude-sonnet-4-6
