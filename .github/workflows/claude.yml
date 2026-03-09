@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
   pull-requests: write
-  id-token: write          # ← add this
+  id-token: write
 
 jobs:
   claude-review:
@@ -16,6 +16,7 @@ jobs:
       - uses: anthropics/claude-code-action@v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}        # ← add this
           prompt: |
             You are a senior code reviewer for LTS Datapoint, a Symfony 6.4 multi-tenant SaaS application.
             Review PR #${{ github.event.pull_request.number }} and post a structured review comment with these sections:
